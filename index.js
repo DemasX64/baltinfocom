@@ -36,145 +36,150 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+/* eslint-disable no-await-in-loop */
 var puppeteer = require("puppeteer");
 var fs = require("fs");
-var url = "https://www.avito.ru/sankt_peterburg_i_lo/lichnye_veschi";
-var itemSelector = ".js-catalog-item-enum";
-var titleSelector = ".title-info-title-text";
+var pageUrl = 'https://www.avito.ru/sankt_peterburg_i_lo/lichnye_veschi';
+// const itemSelector = '.js-catalog-item-enum';
+var titleSelector = '.title-info-title-text';
 var descriptionSelector = 'div[itemprop="description"]';
-var urlSelector = ".iva-item-sliderLink-uLz1v";
+// const urlSelector = '.iva-item-sliderLink-uLz1v';
 var priceSelector = 'span[itemprop="price"]';
 var authorSelector = 'div[data-marker="seller-info/name"]';
-var dateSelector = ".title-info-metadata-item-redesign";
-//const phoneButtonSelector = 'button[data-marker="item-phone-button/card"]';
-//const phoneSelector = 'img[data-marker="phone-image"]';
+var dateSelector = '.title-info-metadata-item-redesign';
+// const phoneButtonSelector = 'button[data-marker="item-phone-button/card"]';
+// const phoneSelector = 'img[data-marker="phone-image"]';
+/*
+Объявления на авито не живут больше месяца, поэтому в дату вставляю дату парсинга
+toISOString()
+*/
+function convertToISO8061(input) {
+    var now = new Date();
+    var date = '';
+    date += now.getFullYear().toString();
+    date += '-';
+    date += ("0".concat((now.getMonth() + 1).toString())).slice(-2);
+    date += '-';
+    if (input.includes('Сегодня')) {
+        date += ("0".concat(now.getDate().toString())).slice(-2);
+    }
+    else if (input.includes('Вчера')) {
+        date += ("0".concat((now.getDate() - 1).toString())).slice(-2);
+    }
+    else {
+        date += ("0".concat(parseInt(input, 10))).slice(-2);
+    }
+    date += 'T';
+    var time = input.split(' ');
+    date += time.pop();
+    return date;
+}
 (function () { return __awaiter(void 0, void 0, void 0, function () {
-    var browser, page, elements, adverts, i, url_1, result, x, advert, title, description, price, _a, author, date, _b, url_2, jsonResult, err_1;
-    return __generator(this, function (_c) {
-        switch (_c.label) {
+    var browser, page, elements, adverts, i, item, result, x, advert, title, description, price, priceFormatted, author, date, _a, url, jsonResult, err_1;
+    return __generator(this, function (_b) {
+        switch (_b.label) {
             case 0:
-                _c.trys.push([0, 31, , 32]);
+                _b.trys.push([0, 31, , 32]);
                 return [4 /*yield*/, puppeteer.launch({ headless: false })];
             case 1:
-                browser = _c.sent();
+                browser = _b.sent();
                 return [4 /*yield*/, browser.newPage()];
             case 2:
-                page = _c.sent();
-                return [4 /*yield*/, page.goto(url)];
+                page = _b.sent();
+                return [4 /*yield*/, page.goto(pageUrl, {
+                        waitUntil: 'domcontentloaded'
+                    })];
             case 3:
-                _c.sent();
-                return [4 /*yield*/, page.$$(".iva-item-sliderLink-uLz1v")];
+                _b.sent();
+                return [4 /*yield*/, page.$$('.iva-item-sliderLink-uLz1v')];
             case 4:
-                elements = _c.sent();
+                elements = _b.sent();
                 adverts = [];
                 i = 0;
-                _c.label = 5;
+                _b.label = 5;
             case 5:
                 if (!(i < elements.length)) return [3 /*break*/, 9];
                 return [4 /*yield*/, elements[i].getProperty('href')];
-            case 6: return [4 /*yield*/, (_c.sent()).jsonValue()];
+            case 6: return [4 /*yield*/, (_b.sent()).jsonValue()];
             case 7:
-                url_1 = _c.sent();
-                adverts.push(url_1);
-                _c.label = 8;
+                item = _b.sent();
+                adverts.push(item);
+                _b.label = 8;
             case 8:
-                i++;
+                i += 1;
                 return [3 /*break*/, 5];
             case 9:
-                console.log(console.log(adverts.length));
                 result = [];
                 x = 0;
-                _c.label = 10;
+                _b.label = 10;
             case 10:
-                if (!(x < 2)) return [3 /*break*/, 30];
+                if (!(x < adverts.length)) return [3 /*break*/, 30];
                 return [4 /*yield*/, browser.newPage()];
             case 11:
-                advert = _c.sent();
+                advert = _b.sent();
                 return [4 /*yield*/, advert.goto(adverts[x], {
                         waitUntil: 'domcontentloaded'
                     })];
             case 12:
-                _c.sent();
+                _b.sent();
                 return [4 /*yield*/, advert.$(titleSelector)];
-            case 13: return [4 /*yield*/, (_c.sent()).getProperty('innerText')];
-            case 14: return [4 /*yield*/, (_c.sent()).jsonValue()];
+            case 13: return [4 /*yield*/, (_b.sent()).getProperty('innerText')];
+            case 14: return [4 /*yield*/, (_b.sent()).jsonValue()];
             case 15:
-                title = _c.sent();
+                title = _b.sent();
                 return [4 /*yield*/, advert.$(descriptionSelector)];
-            case 16: return [4 /*yield*/, (_c.sent()).getProperty('innerText')];
-            case 17: return [4 /*yield*/, (_c.sent()).jsonValue()];
+            case 16: return [4 /*yield*/, (_b.sent()).getProperty('innerText')];
+            case 17: return [4 /*yield*/, (_b.sent()).jsonValue()];
             case 18:
-                description = _c.sent();
-                _a = parseInt;
+                description = _b.sent();
                 return [4 /*yield*/, advert.$(priceSelector)];
-            case 19: return [4 /*yield*/, (_c.sent()).getProperty('innerText')];
-            case 20: return [4 /*yield*/, (_c.sent()).jsonValue()];
+            case 19: return [4 /*yield*/, (_b.sent()).getProperty('innerText')];
+            case 20: return [4 /*yield*/, (_b.sent()).jsonValue()];
             case 21:
-                price = _a.apply(void 0, [_c.sent()]);
+                price = _b.sent();
+                priceFormatted = parseInt(price.replace('\u00A0', ''), 10);
                 return [4 /*yield*/, advert.$(authorSelector)];
-            case 22: return [4 /*yield*/, (_c.sent()).getProperty('innerText')];
-            case 23: return [4 /*yield*/, (_c.sent()).jsonValue()];
+            case 22: return [4 /*yield*/, (_b.sent()).getProperty('innerText')];
+            case 23: return [4 /*yield*/, (_b.sent()).jsonValue()];
             case 24:
-                author = _c.sent();
-                _b = convertToISO8061;
+                author = _b.sent();
+                _a = convertToISO8061;
                 return [4 /*yield*/, advert.$(dateSelector)];
-            case 25: return [4 /*yield*/, (_c.sent()).getProperty('innerText')];
-            case 26: return [4 /*yield*/, (_c.sent()).jsonValue()];
+            case 25: return [4 /*yield*/, (_b.sent()).getProperty('innerText')];
+            case 26: return [4 /*yield*/, (_b.sent()).jsonValue()];
             case 27:
-                date = _b.apply(void 0, [_c.sent()]);
-                url_2 = adverts[x];
+                date = _a.apply(void 0, [_b.sent()]);
+                url = adverts[x];
                 result.push({
                     title: title,
                     description: description,
-                    url: url_2,
-                    price: price,
+                    url: url,
+                    price: priceFormatted,
                     author: author,
                     date: date,
-                    phone: ""
+                    phone: ''
                 });
                 return [4 /*yield*/, advert.close()];
             case 28:
-                _c.sent();
-                _c.label = 29;
+                _b.sent();
+                _b.label = 29;
             case 29:
-                x++;
+                x += 1;
                 return [3 /*break*/, 10];
             case 30:
                 jsonResult = JSON.stringify(result);
-                fs.writeFile("./result.json", jsonResult, 'utf8', function (err) {
+                fs.writeFile('./result.json', jsonResult, 'utf8', function (err) {
                     if (err) {
                         return console.log(err);
                     }
-                    console.log("Готово");
+                    return console.log('Готово');
                 });
                 return [3 /*break*/, 32];
             case 31:
-                err_1 = _c.sent();
+                err_1 = _b.sent();
                 console.log(err_1);
                 return [3 /*break*/, 32];
             case 32: return [2 /*return*/];
         }
     });
 }); })();
-/*
-Объявления на авито не живут больше месяца, поэтому в дату вставляю дату парсинга
-*/
-function convertToISO8061(input) {
-    var now = new Date();
-    var date = "";
-    date += now.getFullYear().toString();
-    date += "-";
-    date += ("0" + (now.getMonth() + 1).toString()).slice(-2);
-    date += "-";
-    if (input.includes("Сегодня"))
-        date += ("0" + now.getDate().toString()).slice(-2);
-    else if (input.includes("Вчера"))
-        date += ("0" + (now.getDate() - 1).toString()).slice(-2);
-    else
-        date += ("0" + parseInt(input)).slice(-2);
-    date += "T";
-    var time = input.split(" ");
-    date += time.pop();
-    console.log(date);
-    return date;
-}
