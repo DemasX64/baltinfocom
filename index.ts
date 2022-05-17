@@ -1,6 +1,12 @@
 /* eslint-disable no-await-in-loop */
-import * as puppeteer from 'puppeteer';
-import * as fs from 'fs';
+import puppeteer from 'puppeteer-extra';
+import fs from 'fs';
+import Tesseract from 'tesseract.js';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
+import readline from 'readline';
+
+readline.emitKeypressEvents(process.stdin);
+process.stdin.setRawMode(true);
 
 interface Advert {
     title: string;
@@ -12,6 +18,8 @@ interface Advert {
     phone: string;
   }
 
+let browser:any;
+
 const pageUrl = 'https://www.avito.ru/sankt_peterburg_i_lo/lichnye_veschi';
 
 // const itemSelector = '.js-catalog-item-enum';
@@ -21,15 +29,17 @@ const descriptionSelector = 'div[itemprop="description"]';
 const priceSelector = 'span[itemprop="price"]';
 const authorSelector = 'div[data-marker="seller-info/name"]';
 const dateSelector = '.title-info-metadata-item-redesign';
-// const phoneButtonSelector = 'button[data-marker="item-phone-button/card"]';
-// const phoneSelector = 'img[data-marker="phone-image"]';
+const phoneButtonSelector = 'button[data-marker="item-phone-button/card"]';
+const phoneSelector = 'img[data-marker="phone-popup/phone-image"]';
+
+console.log('Войдите в аккаунт, после нажмите пробел');
 
 /*
 Объявления на авито не живут больше месяца, поэтому в дату вставляю дату парсинга
 toISOString()
 */
 
-function convertToISO8061(input):string {
+function convertToISO8061(input:string):string {
   const now = new Date();
   let date:string = '';
   date += now.getFullYear().toString();
@@ -48,9 +58,21 @@ function convertToISO8061(input):string {
   return date;
 }
 
-(async () => {
+function recognizePhone(image:string) {
+  return new Promise<string>((resolve) => {
+    Tesseract.recognize(
+      image,
+      'eng',
+    ).then(({ data: { text } }) => {
+      const formattedPhone = text.replace(/ |-|\n/g, '');
+      resolve(formattedPhone);
+    });
+  });
+}
+
+async function startParsing() {
+  const result : Advert [] = [];
   try {
-    const browser = await puppeteer.launch({ headless: false });
     const page = await browser.newPage();
     await page.goto(pageUrl, {
       waitUntil: 'domcontentloaded',
@@ -63,15 +85,13 @@ function convertToISO8061(input):string {
       adverts.push(item);
     }
 
-    const result : Advert [] = [];
-
     /*
        Переход на страницу сделал для того чтобы спарсить продавца
        Остальное можно было спарсить с каталога
     */
 
     for (let x = 0; x < adverts.length; x += 1) {
-    // for (let x = 0; x < 10; x += 1) {
+    // for (let x = 0; x < 2; x += 1) {
       const advert = await browser.newPage();
       await advert.goto(adverts[x], {
         waitUntil: 'domcontentloaded',
@@ -79,23 +99,26 @@ function convertToISO8061(input):string {
 
       const title:string = await (await (await advert.$(titleSelector)).getProperty('innerText')).jsonValue();
       const description:string = await (await (await advert.$(descriptionSelector)).getProperty('innerText')).jsonValue();
-      const price:string = await (await (await advert.$(priceSelector)).getProperty('innerText')).jsonValue();
+      const priceElement = await advert.$(priceSelector);
+      let price:string = '-';
+      if (priceElement != null) {
+        price = await (await (priceElement.getProperty('innerText'))).jsonValue();
+      }
       const priceFormatted:number = parseInt(price.replace('\u00A0', ''), 10);
       const author:string = await (await (await advert.$(authorSelector)).getProperty('innerText')).jsonValue();
       const date:string = convertToISO8061(await (await (await advert.$(dateSelector)).getProperty('innerText')).jsonValue());
 
       /* Получение номера доступно только с входом в аккаунт */
 
-      // const button = await advert.$(phoneButtonSelector);
-      // let phone:string;
-      // if (button != null) {
-      //   await button.click();
-      //   await advert.waitForSelector(phoneSelector).then(async () => {
-      //     phone = await (await (await advert.$(phoneSelector)).getProperty('src')).jsonValue();
-      //   });
-      // } else {
-      //   phone = 'Не указан';
-      // }
+      const button = await advert.$(phoneButtonSelector);
+      let phone:string = '-';
+      if (button != null) {
+        await button.click();
+        await advert.waitForSelector(phoneSelector).then(async () => {
+          const phoneImage = await (await (await advert.$(phoneSelector)).getProperty('src')).jsonValue();
+          phone = await recognizePhone(phoneImage);
+        });
+      }
 
       const url = adverts[x];
 
@@ -106,12 +129,12 @@ function convertToISO8061(input):string {
         price: priceFormatted,
         author,
         date,
-        phone: '',
+        phone,
       });
 
       await advert.close();
     }
-
+  } catch (err) { console.log(err); } finally {
     const jsonResult = JSON.stringify(result);
 
     fs.writeFile('./result.json', jsonResult, 'utf8', (err) => {
@@ -120,5 +143,23 @@ function convertToISO8061(input):string {
       }
       return console.log('Готово');
     });
+  }
+}
+
+(async () => {
+  try {
+    browser = await puppeteer.use(StealthPlugin()).launch({ headless: false });
+    const page = await browser.newPage();
+    await page.goto(pageUrl);
   } catch (err) { console.log(err); }
 })();
+
+process.stdin.on('keypress', (str, key) => {
+  if (key.name === 'c' && key.ctrl === true) {
+    process.exit();
+  }
+
+  if (key.name === 'space') {
+    startParsing();
+  }
+});
