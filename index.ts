@@ -3,10 +3,10 @@ import puppeteer from 'puppeteer-extra';
 import fs from 'fs';
 import Tesseract from 'tesseract.js';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
-import readline from 'readline';
+// import readline from 'readline';
 
-readline.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
+// readline.emitKeypressEvents(process.stdin);
+// process.stdin.setRawMode(true);
 
 interface Advert {
     title: string;
@@ -21,6 +21,7 @@ interface Advert {
 let browser:any;
 
 const pageUrl = 'https://www.avito.ru/sankt_peterburg_i_lo/lichnye_veschi';
+const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36';
 
 // const itemSelector = '.js-catalog-item-enum';
 const titleSelector = '.title-info-title-text';
@@ -32,7 +33,7 @@ const dateSelector = '.title-info-metadata-item-redesign';
 const phoneButtonSelector = 'button[data-marker="item-phone-button/card"]';
 const phoneSelector = 'img[data-marker="phone-popup/phone-image"]';
 
-console.log('Войдите в аккаунт, после нажмите пробел');
+// console.log('Войдите в аккаунт, после нажмите пробел');
 
 /*
 Объявления на авито не живут больше месяца, поэтому в дату вставляю дату парсинга
@@ -150,16 +151,27 @@ async function startParsing() {
   try {
     browser = await puppeteer.use(StealthPlugin()).launch({ headless: false });
     const page = await browser.newPage();
-    await page.goto(pageUrl);
+    await page.goto(pageUrl, { waitUntil: 'domcontentloaded' });
+
+    fs.readFile('./cookies.json', 'utf8', async (err, jsonString) => {
+      if (err) {
+        console.log('File read failed:', err);
+        return;
+      }
+      const cookies = JSON.parse(jsonString);
+      await page.setCookie(...cookies);
+      await page.setUserAgent(userAgent);
+      startParsing();
+    });
   } catch (err) { console.log(err); }
 })();
 
-process.stdin.on('keypress', (str, key) => {
-  if (key.name === 'c' && key.ctrl === true) {
-    process.exit();
-  }
+// process.stdin.on('keypress', (str, key) => {
+//   if (key.name === 'c' && key.ctrl === true) {
+//     process.exit();
+//   }
 
-  if (key.name === 'space') {
-    startParsing();
-  }
-});
+//   if (key.name === 'space') {
+//     startParsing();
+//   }
+// });

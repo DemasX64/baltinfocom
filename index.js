@@ -17,11 +17,9 @@ const puppeteer_extra_1 = __importDefault(require("puppeteer-extra"));
 const fs_1 = __importDefault(require("fs"));
 const tesseract_js_1 = __importDefault(require("tesseract.js"));
 const puppeteer_extra_plugin_stealth_1 = __importDefault(require("puppeteer-extra-plugin-stealth"));
-const readline_1 = __importDefault(require("readline"));
-readline_1.default.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
 let browser;
 const pageUrl = 'https://www.avito.ru/sankt_peterburg_i_lo/lichnye_veschi';
+const userAgent = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36';
 // const itemSelector = '.js-catalog-item-enum';
 const titleSelector = '.title-info-title-text';
 const descriptionSelector = 'div[itemprop="description"]';
@@ -31,7 +29,7 @@ const authorSelector = 'div[data-marker="seller-info/name"]';
 const dateSelector = '.title-info-metadata-item-redesign';
 const phoneButtonSelector = 'button[data-marker="item-phone-button/card"]';
 const phoneSelector = 'img[data-marker="phone-popup/phone-image"]';
-console.log('Войдите в аккаунт, после нажмите пробел');
+// console.log('Войдите в аккаунт, после нажмите пробел');
 /*
 Объявления на авито не живут больше месяца, поэтому в дату вставляю дату парсинга
 toISOString()
@@ -140,17 +138,27 @@ function startParsing() {
     try {
         browser = yield puppeteer_extra_1.default.use((0, puppeteer_extra_plugin_stealth_1.default)()).launch({ headless: false });
         const page = yield browser.newPage();
-        yield page.goto(pageUrl);
+        yield page.goto(pageUrl, { waitUntil: 'domcontentloaded' });
+        fs_1.default.readFile('./cookies.json', 'utf8', (err, jsonString) => __awaiter(void 0, void 0, void 0, function* () {
+            if (err) {
+                console.log('File read failed:', err);
+                return;
+            }
+            const cookies = JSON.parse(jsonString);
+            yield page.setCookie(...cookies);
+            yield page.setUserAgent(userAgent);
+            startParsing();
+        }));
     }
     catch (err) {
         console.log(err);
     }
 }))();
-process.stdin.on('keypress', (str, key) => {
-    if (key.name === 'c' && key.ctrl === true) {
-        process.exit();
-    }
-    if (key.name === 'space') {
-        startParsing();
-    }
-});
+// process.stdin.on('keypress', (str, key) => {
+//   if (key.name === 'c' && key.ctrl === true) {
+//     process.exit();
+//   }
+//   if (key.name === 'space') {
+//     startParsing();
+//   }
+// });
